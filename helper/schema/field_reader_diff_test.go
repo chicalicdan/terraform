@@ -154,6 +154,72 @@ func TestDiffFieldReader_MapHandling(t *testing.T) {
 	}
 }
 
+func TestDiffFieldReader_nilAttribute(t *testing.T) {
+	schema := map[string]*Schema{
+		"stream_enabled": {
+			Type:     TypeBool,
+			Optional: true,
+		},
+		"stream_view_type": {
+			Type:     TypeString,
+			Optional: true,
+		},
+		"unrelated_set": {
+			Type:     TypeSet,
+			Optional: true,
+			Elem: &Resource{
+				Schema: map[string]*Schema{
+					"index": &Schema{
+						Type:     TypeInt,
+						Required: true,
+					},
+
+					"value": &Schema{
+						Type:     TypeString,
+						Required: true,
+					},
+				},
+			},
+			Set: func(a interface{}) int {
+				m := a.(map[string]interface{})
+				return m["index"].(int)
+			},
+		},
+	}
+	r := &DiffFieldReader{
+		Schema: schema,
+		Diff: &terraform.InstanceDiff{
+			Attributes: map[string]*terraform.ResourceAttrDiff{
+				"stream_enabled": {
+					Old: "true",
+					New: "false",
+				},
+				"stream_view_type": nil,
+			},
+		},
+		Source: &MapFieldReader{
+			Schema: schema,
+			Map: BasicMapReader(map[string]string{
+				"stream_enabled":   "false",
+				"stream_view_type": "",
+			}),
+		},
+	}
+
+	result, err := r.ReadField([]string{"unrelated_set"})
+	if err != nil {
+		t.Fatalf("ReadField failed: %#v", err)
+	}
+
+	if result.Exists != false {
+		t.Fatal("Expected unrelated_set to not exist")
+	}
+
+	if result.ValueProcessed != nil {
+		t.Fatal("Expected unrelated_set value to be nil, given: %#v", result.ValueProcessed)
+	}
+}
+
 func TestDiffFieldReader_extra(t *testing.T) {
 	schema := map[string]*Schema{
 		"stringComputed": &Schema{Type: TypeString},

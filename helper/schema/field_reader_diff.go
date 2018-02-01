@@ -180,15 +180,15 @@ func (r *DiffFieldReader) readSet(
 
 	// Go through the map and find all the set items
 	for k, d := range r.Diff.Attributes {
-		if d.NewRemoved {
-			// If the field is removed, we always ignore it
-			continue
-		}
 		if !strings.HasPrefix(k, prefix) {
 			continue
 		}
 		if strings.HasSuffix(k, "#") {
 			// Ignore any count field
+			continue
+		}
+		if d.NewRemoved {
+			// If the field is removed, we always ignore it
 			continue
 		}
 
